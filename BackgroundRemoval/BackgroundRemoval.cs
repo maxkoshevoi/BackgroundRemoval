@@ -23,27 +23,16 @@ namespace BackgroundRemoval
         {
             Bitmap grayscale = Grayscale.CommonAlgorithms.BT709.Apply(image);
 
-            SobelEdgeDetector sobelEdgeDetector = new SobelEdgeDetector();
-            CannyEdgeDetector cannyEdgeDetector = new CannyEdgeDetector();
-            
-            Bitmap imageToProcess;
-            switch (edgeDetectionType)
+            SobelEdgeDetector sobelEdgeDetector = new();
+            CannyEdgeDetector cannyEdgeDetector = new();
+            Bitmap imageToProcess = edgeDetectionType switch
             {
-                case EdgeDetectionTypes.Sobel:
-                    imageToProcess = sobelEdgeDetector.Apply(grayscale);
-                    break;
-                case EdgeDetectionTypes.Canny:
-                    imageToProcess = cannyEdgeDetector.Apply(grayscale);
-                    break;
-                case EdgeDetectionTypes.SobelThenCanny:
-                    Bitmap sobel = sobelEdgeDetector.Apply(grayscale);
-                    imageToProcess = cannyEdgeDetector.Apply(sobel);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(edgeDetectionType), "Unknown edge detection type");
-            }
-
-            BlobCounter blobCounter = new BlobCounter
+                EdgeDetectionTypes.Sobel => sobelEdgeDetector.Apply(grayscale),
+                EdgeDetectionTypes.Canny => cannyEdgeDetector.Apply(grayscale),
+                EdgeDetectionTypes.SobelThenCanny => cannyEdgeDetector.Apply(sobelEdgeDetector.Apply(grayscale)),
+                _ => throw new ArgumentOutOfRangeException(nameof(edgeDetectionType), "Unknown edge detection type"),
+            };
+            BlobCounter blobCounter = new()
             {
                 BlobsFilter = new GradientSizeBlobFilter(imageToProcess.Size, new Size(5, 5), new Size(100, 100)),
                 FilterBlobs = true
@@ -56,14 +45,16 @@ namespace BackgroundRemoval
 
         private static Bitmap ClipMainObject(Bitmap image, BlobCounter blobCounter)
         {
-            List<IntPoint> corners = new List<IntPoint>();
+            List<IntPoint> corners = new();
+            
             // Create convex hull searching algorithm
-            GrahamConvexHull hullFinder = new GrahamConvexHull();
+            GrahamConvexHull hullFinder = new();
             foreach (Blob blob in blobCounter.GetObjectsInformation())
             {
                 // Get blob's edge points
                 List<IntPoint> edgePoints = blobCounter.GetBlobsEdgePoints(blob);
                 corners.AddRange(edgePoints);
+                
                 // Blob's convex hull
                 corners = hullFinder.FindHull(corners);
             }
@@ -79,12 +70,10 @@ namespace BackgroundRemoval
                 clipRegion.Translate(-mainObjectBounds.X, -mainObjectBounds.Y);
 
                 // Draw selected region
-                Bitmap clippedImage = new Bitmap((int)mainObjectBounds.Width, (int)mainObjectBounds.Height);//, PixelFormat.Format32bppArgb);
-                using (Graphics g = Graphics.FromImage(clippedImage))
-                {
-                    g.Clip = clipRegion; // Restrict drawing region
-                    g.DrawImage(image, -mainObjectBounds.X, -mainObjectBounds.Y, image.Width, image.Height); // Draw clipped
-                }
+                Bitmap clippedImage = new((int)mainObjectBounds.Width, (int)mainObjectBounds.Height);//, PixelFormat.Format32bppArgb);
+                using var g = Graphics.FromImage(clippedImage);
+                g.Clip = clipRegion; // Restrict drawing region
+                g.DrawImage(image, -mainObjectBounds.X, -mainObjectBounds.Y, image.Width, image.Height); // Draw clipped
                 return clippedImage;
             }
 
@@ -120,37 +109,31 @@ namespace BackgroundRemoval
 
         public static Bitmap Resize(Bitmap image, int width, int height)
         {
-            var destRect = new Rectangle(0, 0, width, height);
-            var destImage = new Bitmap(width, height);
+            Rectangle destRect = new(0, 0, width, height);
+            Bitmap destImage = new(width, height);
 
             destImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
 
-            using (var graphics = Graphics.FromImage(destImage))
-            {
-                graphics.CompositingMode = CompositingMode.SourceCopy;
-                graphics.CompositingQuality = CompositingQuality.HighQuality;
-                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                graphics.SmoothingMode = SmoothingMode.HighQuality;
-                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            using var graphics = Graphics.FromImage(destImage);
+            graphics.CompositingMode = CompositingMode.SourceCopy;
+            graphics.CompositingQuality = CompositingQuality.HighQuality;
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.SmoothingMode = SmoothingMode.HighQuality;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-                using (var wrapMode = new ImageAttributes())
-                {
-                    wrapMode.SetWrapMode(WrapMode.TileFlipXY);
-                    graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
-                }
-            }
+            using ImageAttributes wrapMode = new();
+            wrapMode.SetWrapMode(WrapMode.TileFlipXY);
+            graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
 
             return destImage;
         }
 
         public static Bitmap ChangePixelFormat(Bitmap image, PixelFormat pixelFormat)
         {
-            Bitmap clone = new Bitmap(image.Width, image.Height, pixelFormat);
+            Bitmap clone = new(image.Width, image.Height, pixelFormat);
 
-            using (Graphics gr = Graphics.FromImage(clone))
-            {
-                gr.DrawImage(image, new Rectangle(0, 0, clone.Width, clone.Height));
-            }
+            using var gr = Graphics.FromImage(clone);
+            gr.DrawImage(image, new Rectangle(0, 0, clone.Width, clone.Height));
 
             return clone;
         }

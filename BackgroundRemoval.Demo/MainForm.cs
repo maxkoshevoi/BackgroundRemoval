@@ -116,12 +116,11 @@ namespace BackgroundRemoval.Demo
         
         private void DetectObjectInImage(Bitmap image)
         {
-            GaussianBlur gaussianBlur = new GaussianBlur(4, 11);
-            SobelEdgeDetector sobelEdgeDetector = new SobelEdgeDetector();
-            CannyEdgeDetector cannyEdgeDetector = new CannyEdgeDetector();
+            GaussianBlur gaussianBlur = new(4, 11);
+            SobelEdgeDetector sobelEdgeDetector = new();
+            CannyEdgeDetector cannyEdgeDetector = new();
 
             Bitmap grayscale = Grayscale.CommonAlgorithms.BT709.Apply(image);
-
 
             //if (chGaussianBlur.Checked)
             //{
@@ -172,7 +171,7 @@ namespace BackgroundRemoval.Demo
 
         private static BlobCounter GetObjectsRectangles(Bitmap grayImage)
         {
-            BlobCounter blobCounter = new BlobCounter
+            BlobCounter blobCounter = new()
             {
                 BlobsFilter = new GradientSizeBlobFilter(grayImage.Size, new Size(5, 5), new Size(100, 100)),
                 FilterBlobs = true,
@@ -184,44 +183,40 @@ namespace BackgroundRemoval.Demo
 
         private static void DrawAllObjects(ref Bitmap allObjects, Rectangle[] rectangles)
         {
-            using (Graphics g = Graphics.FromImage(allObjects))
-            using (Pen pen = new Pen(Color.FromArgb(160, 255, 160), 3))
+            using var g = Graphics.FromImage(allObjects);
+            using Pen pen = new(Color.FromArgb(160, 255, 160), 3);
+            foreach (Rectangle rect in rectangles)
             {
-                foreach (Rectangle rect in rectangles)
-                {
-                    g.DrawRectangle(pen, rect);
-                }
+                g.DrawRectangle(pen, rect);
             }
         }
 
         private static void DrawMainObjectRectangle(ref Bitmap mainObject, BlobCounter blobCounter)
         {
-            List<IntPoint> corners = new List<IntPoint>();
-            GrahamConvexHull hullFinder = new GrahamConvexHull();
+            List<IntPoint> corners = new();
+            GrahamConvexHull hullFinder = new();
             foreach (Rectangle rect in blobCounter.GetObjectsRectangles())
             {
-                corners.Add(new IntPoint(rect.X, rect.Y));
-                corners.Add(new IntPoint(rect.X, rect.Bottom));
-                corners.Add(new IntPoint(rect.Right, rect.Bottom));
-                corners.Add(new IntPoint(rect.Right, rect.Y));
+                corners.Add(new(rect.X, rect.Y));
+                corners.Add(new(rect.X, rect.Bottom));
+                corners.Add(new(rect.Right, rect.Bottom));
+                corners.Add(new(rect.Right, rect.Y));
                 corners = hullFinder.FindHull(corners);
             }
 
             if (corners.Any())
             {
-                using (Graphics g = Graphics.FromImage(mainObject))
-                using (Pen pen = new Pen(Color.FromArgb(160, 255, 160), 3))
-                {
-                    g.DrawPolygon(pen, corners.Select(c => new Point(c.X, c.Y)).ToArray());
-                }
+                using var g = Graphics.FromImage(mainObject);
+                using Pen pen = new(Color.FromArgb(160, 255, 160), 3);
+                g.DrawPolygon(pen, corners.Select(c => new Point(c.X, c.Y)).ToArray());
             }
         }
 
         private static void DrawMainObjectEdges(ref Bitmap mainObject, BlobCounter blobCounter)
         {
-            List<IntPoint> corners = new List<IntPoint>();
+            List<IntPoint> corners = new();
             // create convex hull searching algorithm
-            GrahamConvexHull hullFinder = new GrahamConvexHull();
+            GrahamConvexHull hullFinder = new();
             foreach (Blob blob in blobCounter.GetObjectsInformation())
             {
                 // get blob's edge points
@@ -239,19 +234,18 @@ namespace BackgroundRemoval.Demo
                 //    g.DrawPolygon(pen, corners.Select(c => new Point(c.X, c.Y)).ToArray());
                 //}
 
-                GraphicsPath graphicsPath = new GraphicsPath();
+                GraphicsPath graphicsPath = new();
                 graphicsPath.AddPolygon(corners.Select(c => new Point(c.X, c.Y)).ToArray());
                 RectangleF mainObjectBounds = graphicsPath.GetBounds();
 
-                Region clipRegion = new Region(graphicsPath);
+                Region clipRegion = new(graphicsPath);
                 clipRegion.Translate(-mainObjectBounds.X, -mainObjectBounds.Y);
 
-                Bitmap clippedImage = new Bitmap((int)mainObjectBounds.Width, (int)mainObjectBounds.Height);//, PixelFormat.Format32bppArgb);
-                using (Graphics g = Graphics.FromImage(clippedImage))
-                {
-                    g.Clip = clipRegion;   // restrict drawing region
-                    g.DrawImage(mainObject, -mainObjectBounds.X, -mainObjectBounds.Y, mainObject.Width, mainObject.Height); // draw clipped
-                }
+                Bitmap clippedImage = new((int)mainObjectBounds.Width, (int)mainObjectBounds.Height);//, PixelFormat.Format32bppArgb);
+                using var g = Graphics.FromImage(clippedImage);
+                g.Clip = clipRegion;   // restrict drawing region
+                g.DrawImage(mainObject, -mainObjectBounds.X, -mainObjectBounds.Y, mainObject.Width, mainObject.Height); // draw clipped
+                
                 mainObject = clippedImage;
             }
         }
