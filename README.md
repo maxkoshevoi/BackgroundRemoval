@@ -9,7 +9,7 @@ Note that it biased towards detecting objects closer to the center
 ## How it works
 1) Image is converted to grayscale
 2) Selected edge detector is applied
-3) Blob counter with [gradient size](BackgroundRemoval/BackgroundRemoval.cs#L48) is applied to find all the objects
+3) Blob counter with [gradient size](BackgroundRemoval/BackgroundRemoval.cs#L37) is applied to find all the objects
 4) Convex hull is created around them
 5) Image inside said convex hull is returned
 
